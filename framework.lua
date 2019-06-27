@@ -1,3 +1,7 @@
+if not macros then
+    macros = {}
+end
+
 polling = {
     FAMILY   = "mouse",
     -- 轮训周期, 25 毫秒为 1.5 帧, 比较合理
@@ -126,7 +130,7 @@ function macros:excute_sequence(sequence, async)
             return nil
         end
 
-        if action.type == "delay" and async then
+        if action.type == "delay" then
             if async then
                 sequence.resume_time = sequence.resume_time + action.duration
                 while true do
@@ -141,6 +145,7 @@ function macros:excute_sequence(sequence, async)
             self:toggle(action.value)
 
         elseif action.type == "skill" then
+
             button:release_skill(action)
         end
     end
@@ -172,7 +177,7 @@ function macros:active_sequence(sequence)
 end
 
 function macros:deactive_sequence(sequence)
-    if sequence == nil then return end
+    if sequence == nil or sequence.co == nil then return end
 
     if coroutine.status(sequence.co) ~= "dead" then
         coroutine.resume(sequence.co, "EXIT")
@@ -184,7 +189,7 @@ end
 -- 数字宏具有排他性
 function macros:toggle(trigger)
 
-    local function _toggle(macro)
+    local function _toggle(macro, trigger)
         local active_macro = nil
 
         -- 匿名(数字)宏由鼠标按键触发, 具有排他性, 同一时间只能激活一个
@@ -210,7 +215,7 @@ function macros:toggle(trigger)
     end
 
     for _, macro in ipairs(self) do
-        _toggle(macro)
+        _toggle(macro, trigger)
     end
 end
 

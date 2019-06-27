@@ -95,7 +95,7 @@ Macro framework of logitech mouse for diablo3 or other game.
 
 ## 动作 action
 
- action 即 动作, loop 或者 sequence 中包含的没一条指令即为一个 action. 本框架中, 提供了 3 种 action:
+ action 即 动作, loop 或者 sequence 中包含的每一条指令即为一个 action. 本框架中, 提供了 3 种 action:
 
 ### skill
  	
@@ -131,7 +131,7 @@ Macro framework of logitech mouse for diablo3 or other game.
 
 - modifier
 
-	设定修饰按键, 例如: "lshift" -- 左边的shift,  保持强制站立
+	设定修饰按键, 例如: "lshift" -- 左边的shift
 
 	可选
 
@@ -267,7 +267,7 @@ loop 宏, 可以定义持续时间 duration, 超过 duration, 宏会自动关闭
 		}
 	}
 
-sequence 宏, 可以通过设置 loop 属性设置是否重复执行. 如果不设置 loop 则 sequence 只执行一次.
+sequence 宏, 可以通过设置 loop 属性设置是否重复执行. 如果不设置 loop 则 sequence 只执行一次, 执行完成后, 宏会自动关闭.
 
 假设一个法师, 想要顺序执行以下动作:
 
@@ -304,7 +304,7 @@ sequence 宏, 可以通过设置 loop 属性设置是否重复执行. 如果不�
 
 				-- 引导技能
 				{ type = "skill", key = keymap.ying_dao, duration = 50};
-				}
+			}
 		}
 	}
 
@@ -332,9 +332,9 @@ macros 中包含了我们定义的所有宏, 可以有多个.
 
 ## 示例
 
-以下宏定义只作为演示, 未经测试, 不建议直接用于游戏
+以下宏定义只作为演示,  展示不同的 macros 定义方法, 未经测试, 不建议直接用于游戏
 
-奶僧
+### 奶僧
 
 	keymap = {
 		left = "left";
@@ -371,7 +371,7 @@ macros 中包含了我们定义的所有宏, 可以有多个.
 		}
 	}
 
-奥陨
+### 奥陨
 
 	keymap = {
 		yunshi = "1";
@@ -427,7 +427,7 @@ macros 中包含了我们定义的所有宏, 可以有多个.
 		}
 	}
 
-奥陨 2
+### 奥陨 2
 
 	-- 火 1s 后开宏
 	keymap = {
@@ -496,6 +496,80 @@ macros 中包含了我们定义的所有宏, 可以有多个.
 				{ type = "skill", key = keymap.ying_dao, duration = 50};
 			}
 		}
+	}
+
+### 棒棒糖 1
+
+	keymap = {
+		left = "left";
+		ying_dao = "right";
+		hei_dong = "1";
+		bin_bao_shu = "1";
+		shi_jian_yan_chi = "2";
+		kuang_bao = "3";
+		hei_ren = "4";
+	}
+
+	macros = {
+		{ 
+			trigger  = 7,
+
+			sequence = {
+				{ type = "macro", value = "hei_ren" };
+				{ type = "delay", duration = 20000 };
+
+				{ type = "skill", key = keymap.hei_dong};
+			},
+		},
+		{
+			trigger = "hei_ren",
+			duration = 20000,
+			loop = {
+				before = {
+					{ type = "skill", key = keymap.hei_ren};
+					{ type = "delay", duration = 500 };
+					{ type = "skill", key = keymap.shi_jian_yan_chi};
+				},
+
+				{ type = "skill", key = keymap.bin_bao_shu };
+
+			},
+		}
+	}
+
+### 棒棒糖 2
+
+	keymap = {
+		left = "left";
+		ying_dao = "right";
+		hei_dong = "1";
+		bin_bao_shu = "1";
+		shi_jian_yan_chi = "2";
+		kuang_bao = "3";
+		hei_ren = "4";
+	}
+
+	macros = {
+		{ 
+			trigger  = 7,
+
+			loop = {
+
+				duration = 20000;
+
+				before = {
+					{ type = "skill", key = keymap.hei_ren};
+					{ type = "delay", duration = 500 };
+					{ type = "skill", key = keymap.shi_jian_yan_chi};
+				},
+
+				{ type = "skill", key = keymap.bin_bao_shu };
+
+				after = {
+					{ type = "skill", key = keymap.hei_dong};
+				}
+			},
+		},
 	}
 
 # 注意事项
