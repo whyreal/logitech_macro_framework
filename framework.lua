@@ -145,7 +145,6 @@ function macros:excute_sequence(sequence, async)
             self:toggle(action.value)
 
         elseif action.type == "skill" then
-
             button:release_skill(action)
         end
     end
@@ -190,22 +189,20 @@ end
 function macros:toggle(trigger)
 
     local function _toggle(macro, trigger)
-        local active_macro = nil
 
-        -- 匿名(数字)宏由鼠标按键触发, 具有排他性, 同一时间只能激活一个
-        -- 当激活一个数字宏, 其他的数字宏将被自动关闭
         if trigger ~= macro.trigger then
-            if type(macro.trigger) == "string" then
+            if (type(trigger) == "number" and type(macro.trigger) == "number" and macro.enabled) then
+                -- 匿名(数字)宏由鼠标按键触发, 具有排他性, 同一时间只能激活一个
+                -- 当激活一个数字宏, 其他的数字宏将被自动关闭
+                macro.enabled = false
+            else
                 return nil
-            elseif (type(macro.trigger) == "number" and macro.enabled) then
-                active_macro = false
             end
         else
-            active_macro = not macro.enabled
+            macro.enabled = not macro.enabled
         end
 
-        macro.enabled = active_macro
-        if active_macro then
+        if macro.enabled then
             self:active_loop(macro.loop)
             self:active_sequence(macro.sequence)
         else

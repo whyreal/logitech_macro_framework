@@ -506,6 +506,7 @@ macros 中包含了我们定义的所有宏, 可以有多个.
 		hei_dong = "1";
 		bin_bao_shu = "1";
 		shi_jian_yan_chi = "2";
+		hu_dun = "2";
 		kuang_bao = "3";
 		hei_ren = "4";
 	}
@@ -515,19 +516,22 @@ macros 中包含了我们定义的所有宏, 可以有多个.
 			trigger  = 7,
 
 			sequence = {
+				{ type = "skill", key = keymap.left, modifier = "lshift"};
+				{ type = "skill", key = keymap.hu_dun };
 				{ type = "macro", value = "hei_ren" };
 				{ type = "delay", duration = 20000 };
 
+				{ type = "delay", duration = 1000 };
 				{ type = "skill", key = keymap.hei_dong};
 			},
 		},
 		{
 			trigger = "hei_ren",
-			duration = 20000,
 			loop = {
+				duration = 20000,
 				before = {
 					{ type = "skill", key = keymap.hei_ren};
-					{ type = "delay", duration = 500 };
+					{ type = "delay", duration = 700 };
 					{ type = "skill", key = keymap.shi_jian_yan_chi};
 				},
 
