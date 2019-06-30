@@ -1,5 +1,9 @@
-if not macros then
-    macros = {}
+function init_list_metatable(o_list, proto)
+    if o_list == nil then return nil end
+
+    for _, o in ipairs(o_list) do
+        setmetatable(o, {__index = proto})
+    end
 end
 
 polling = {
@@ -23,197 +27,216 @@ function polling:poll(event, arg, family)
     end
 end
 
-button = {
-}
-
--- 根据 action 设置, 触发键盘或鼠标动作
-function button:release_skill(action)
-
-    if action.modifier ~= nil then
-        PressKey(action.modifier)
-    end
-
-    if action.key == "left" then
-        PressMouseButton(1)
-        if action.duration ~= nil then Sleep(action.duration) end
-        ReleaseMouseButton(1)
-    elseif action.key == "right" then
-        PressMouseButton(3)
-        if action.duration ~= nil then Sleep(action.duration) end
-        ReleaseMouseButton(3)
-    else
-        PressKey(action.key)
-        if action.duration ~= nil then Sleep(action.duration) end
-        ReleaseKey(action.key)
-    end
-
-    if action.modifier ~= nil then
-        ReleaseKey(action.modifier)
+function delay(co_context, duration)
+    local resume_time = GetRunningTime() + duration
+    while true do
+        if GetRunningTime() >= resume_time then break end
+        if coroutine.yield() == "EXIT" then
+            co_context.exit = true
+            break
+        end
     end
 end
 
-function macros:active_loop(loop)
-    if loop == nil then return end
+base_action = {
+}
 
-    loop.start_time = GetRunningTime()
-
-    if loop.before ~= nil then
-        self:excute_sequence(loop.before, false)
+-- 根据 action 设置, 触发键盘或鼠标动作
+function base_action:release_skill(co_context)
+    if self.modifier ~= nil then
+        PressKey(self.modifier)
     end
 
-    for _, action in ipairs(loop) do
+    if self.key == "left" then
+        PressMouseButton(1)
+        if self.duration ~= nil then delay(co_context, self.duration) end
+        ReleaseMouseButton(1)
+    elseif self.key == "right" then
+        PressMouseButton(3)
+        if self.duration ~= nil then delay(co_context, self.duration) end
+        ReleaseMouseButton(3)
+    else
+        PressKey(self.key)
+        if self.duration ~= nil then delay(co_context, self.duration) end
+        ReleaseKey(self.key)
+    end
+
+    if self.modifier ~= nil then
+        ReleaseKey(self.modifier)
+    end
+end
+
+base_macro = {}
+
+function base_macro:active()
+    self.subtrigger = {}
+    self.exit = false
+
+
+    if self.type == "loop" then
+        self.co = coroutine.create(self.excute_loop)
+        coroutine.resume(self.co, self)
+    elseif self.type == "sequence" then
+        self.co = coroutine.create(self.excute_sequence)
+        coroutine.resume(self.co, self)
+    end
+end
+
+function base_macro:deactive()
+    self.enabled = false
+
+    if self.co == nil then return end
+
+    for t, _ in pairs(self.subtrigger) do
+        macros:toggle(t, false)
+    end
+
+    if coroutine.status(self.co) ~= "dead" then
+        coroutine.resume(self.co, "EXIT")
+    end
+    self.co = nil
+end
+
+function base_macro:excute_loop()
+    self.start_time = GetRunningTime()
+    local loop_running_time = 0
+
+    local function _check()
+        for _, action in ipairs(self) do
+            if action.type == "skill" then
+                if action.interval == nil then
+                    action:release_skill(self)
+                elseif loop_running_time >= action.release_time then
+                    action:release_skill(self)
+                    action.release_time = action.release_time + action.interval
+                end
+            elseif action.type == "macro" then
+                if action.interval == nil then
+                    self:toggle(action.value)
+                elseif loop_running_time >= action.release_time then
+                    self:toggle(action.value)
+                    action.release_time = action.release_time + action.interval
+                end
+                self.subtrigger[action.value] = true
+            end
+        end
+    end
+
+    -- init skill
+    for _, action in ipairs(self) do
         if action.interval ~= nil then
             action.release_time = 0 
         end
     end
-end
 
-function macros:deactive_loop(loop)
-    if loop == nil then return end
-
-    if loop.after ~= nil then
-        self:excute_sequence(loop.after, false)
+    if self.before ~= nil then
+        self.before:excute_sequence()
     end
-end
 
--- 迭代 macros 中激活的宏, 进行相应处理
-function macros:iterate()
-    if not DO_ITERATE then return nil end
-            
-    local function _run_macro(macro)
-        if not macro.enabled then
-            return nil
+    while true do
+        if self.exit then
+            break
         end
 
-        local is_running = false
-
-        if macro.loop ~= nil then
-            local loop = macro.loop
-            local loop_running_time = GetRunningTime() - loop.start_time
-
-            if loop.duration == nil or loop_running_time < loop.duration then
-                is_running = true
-                for _, action in ipairs(loop) do
-                    if action.interval == nil then
-                        button:release_skill(action)
-                    elseif loop_running_time >= action.release_time then
-                        button:release_skill(action)
-                        action.release_time = action.release_time + action.interval
-                    end
-                end
+        loop_running_time = GetRunningTime() - self.start_time
+        if self.duration then
+            if loop_running_time > self.duration then
+                -- 超时
+                break
+            else
+                _check()
             end
+        else
+            _check()
         end
 
-        if macro.sequence ~= nil and macro.sequence.co ~= nil then
-            local sequence = macro.sequence
-
-            if coroutine.status(sequence.co) == "dead" then
-                self:deactive_sequence(sequence)
-            elseif coroutine.status(sequence.co) == "suspended" then
-                is_running = true
-                coroutine.resume(sequence.co)
-            end
+        if coroutine.yield() == "EXIT" then
+            self.exit = true
         end
-
-        macro.enabled = is_running
     end
 
-    for _, macro in ipairs(self) do
-        _run_macro(macro)
+    if self.after ~= nil then
+        self.after:excute_sequence()
     end
 end
 
-function macros:excute_sequence(sequence, async)
+function base_macro:excute_sequence()
+    local is_first_time = true
 
-    local function _run_action(action, is_first_time)
+    local function _run(action)
+        if action.type == "delay" then
+        end
         if (action.once and not is_first_time) then
             return nil
         end
 
         if action.type == "delay" then
-            if async then
-                sequence.resume_time = sequence.resume_time + action.duration
-                while true do
-                    if GetRunningTime() >= sequence.resume_time then break end
-                    if coroutine.yield() == "EXIT" then return nil end
-                end
-            else
-                Sleep(action.duration)
-            end
+            delay(self, action.duration)
 
         elseif action.type == "macro" then
-            self:toggle(action.value)
+            macros:toggle(action.value)
+            self.subtrigger[action.value] = true
 
         elseif action.type == "skill" then
-            button:release_skill(action)
+            action:release_skill(self)
         end
     end
 
-    local is_first_time = true
-
     repeat
-        sequence.resume_time = GetRunningTime()
-
-        for _, action in ipairs(sequence) do
-            _run_action(action, is_first_time)
+        for _, action in ipairs(self) do
+            _run(action)
+            if self.exit then return nil end
         end
             
         is_first_time = false
 
-        if async then
-            -- 每次循环后, 保留一个退出窗口
-            if coroutine.yield() == "EXIT" then return nil end
+        -- 每次循环后, 保留一个退出窗口
+        if coroutine.yield() == "EXIT" then
+            self.exit = true
         end
-    until not sequence.loop
+    until not self.loop
 end
 
-function macros:active_sequence(sequence)
-    if sequence == nil then return end
-
-    sequence.co = coroutine.create(self.excute_sequence)
-    -- coroutine 初始化
-    coroutine.resume(sequence.co, self, sequence, true)
-end
-
-function macros:deactive_sequence(sequence)
-    if sequence == nil or sequence.co == nil then return end
-
-    if coroutine.status(sequence.co) ~= "dead" then
-        coroutine.resume(sequence.co, "EXIT")
-    end
-    sequence.co = nil
-end
-
--- 切换宏的状态
--- 数字宏具有排他性
-function macros:toggle(trigger)
-
-    local function _toggle(macro, trigger)
-
-        if trigger ~= macro.trigger then
-            if (type(trigger) == "number" and type(macro.trigger) == "number" and macro.enabled) then
-                -- 匿名(数字)宏由鼠标按键触发, 具有排他性, 同一时间只能激活一个
-                -- 当激活一个数字宏, 其他的数字宏将被自动关闭
-                macro.enabled = false
-            else
-                return nil
-            end
+function base_macro:toggle(trigger, status)
+    if trigger ~= self.trigger then
+        if (type(trigger) == "number" and type(self.trigger) == "number" and self.enabled) then
+            -- 匿名(数字)宏由鼠标按键触发, 具有排他性, 同一时间只能激活一个
+            -- 当激活一个数字宏, 其他的数字宏将被自动关闭
+            self.enabled = false
         else
-            macro.enabled = not macro.enabled
+            return nil
         end
-
-        if macro.enabled then
-            self:active_loop(macro.loop)
-            self:active_sequence(macro.sequence)
+    else
+        if status == nil then
+            self.enabled = not self.enabled
         else
-            self:deactive_loop(macro.loop)
-            self:deactive_sequence(macro.sequence)
+            self.enabled = status
         end
     end
 
-    for _, macro in ipairs(self) do
-        _toggle(macro, trigger)
+    if self.enabled then
+        self:active()
+    else
+        self:deactive()
     end
+end
+
+function base_macro:run()
+    if not self.enabled then
+        return nil
+    end
+
+    if self.co ~= nil then
+        if coroutine.status(self.co) == "dead" then
+            self:deactive()
+        elseif coroutine.status(self.co) == "suspended" then
+            coroutine.resume(self.co)
+        end
+    end
+end
+
+if not macros then
+    macros = {}
 end
 
 --[[
@@ -222,24 +245,51 @@ loop 必须设置持续时间(duration)并且小于 60 秒,
 sequence 的 loop 属性不能为 true.
 ]]
 function macros:init()
-    local function _init(macro)
-        macro.enabled = false
-        if type(macro.trigger) == "number" then
-            return nil
+    local function _init_string_macro(macro)
+        if macro.type == "loop"
+                and (macro.duration == nil
+                    or macro.duration > 60000) then
+            macro.duration = 0
         end
-
-        if macro.loop ~= nil
-                and (macro.loop.duration == nil
-                    or macro.loop.duration > 60000) then
-            macro.loop.duration = 0
-        end
-        if macro.sequence ~= nil then
-            macro.sequence.loop = false
+        if macro.type == "sequence" then
+            macro.loop = false
         end
     end
 
+    init_list_metatable(self, base_macro)
+
     for _, macro in ipairs(self) do
-        _init(macro)
+        init_list_metatable(macro, base_action)
+        -- make macro.before and macro.before as a sequence macro
+        for _, s in ipairs({macro.before, macro.after}) do
+            if s ~= nil then
+                s.type = "sequence"
+                init_list_metatable({s}, base_macro)
+                init_list_metatable(s, base_action)
+            end
+        end
+
+        macro.enabled = false
+        if type(macro.trigger) == "string" then
+            _init_string_macro(macro)
+        end
+    end
+end
+
+-- 切换宏的状态
+-- 数字宏具有排他性
+function macros:toggle(trigger, status)
+    for _, macro in ipairs(self) do
+        macro:toggle(trigger, status)
+    end
+end
+ 
+-- 迭代 macros 中激活的宏, 进行相应处理
+function macros:run()
+    if not DO_ITERATE then return nil end
+
+    for _, macro in ipairs(self) do
+        macro:run()
     end
 end
 
@@ -266,6 +316,6 @@ function OnEvent(event, arg, family)
         DO_ITERATE = true
     end
 
-    macros:iterate()
+    macros:run()
     polling:poll(event, arg, family)
 end
