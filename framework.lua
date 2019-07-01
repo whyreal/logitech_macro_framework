@@ -6,6 +6,17 @@ function init_list_metatable(o_list, proto)
     end
 end
 
+function delay(co_context, duration)
+    local resume_time = GetRunningTime() + duration
+    while true do
+        if GetRunningTime() >= resume_time then break end
+        if coroutine.yield() == "EXIT" then
+            co_context.exit = true
+            break
+        end
+    end
+end
+
 polling = {
     FAMILY   = "mouse",
     -- 轮训周期, 25 毫秒为 1.5 帧, 比较合理
@@ -27,20 +38,8 @@ function polling:poll(event, arg, family)
     end
 end
 
-function delay(co_context, duration)
-    local resume_time = GetRunningTime() + duration
-    while true do
-        if GetRunningTime() >= resume_time then break end
-        if coroutine.yield() == "EXIT" then
-            co_context.exit = true
-            break
-        end
-    end
-end
-
 base_action = {
 }
-
 -- 根据 action 设置, 触发键盘或鼠标动作
 function base_action:release_skill(co_context)
     if self.modifier ~= nil then
@@ -66,12 +65,15 @@ function base_action:release_skill(co_context)
     end
 end
 
-base_macro = {}
+base_macro = {
+    enabled = false
+}
 
 function base_macro:active()
     self.subtrigger = {}
+    -- 协程中, 无法直接终止执行,  exit 用来标识协程是否退出
+    -- 将 macro 作为上下文, 通过函数参数传递
     self.exit = false
-
 
     if self.type == "loop" then
         self.co = coroutine.create(self.excute_loop)
@@ -164,8 +166,6 @@ function base_macro:excute_sequence()
     local is_first_time = true
 
     local function _run(action)
-        if action.type == "delay" then
-        end
         if (action.once and not is_first_time) then
             return nil
         end
@@ -185,6 +185,8 @@ function base_macro:excute_sequence()
     repeat
         for _, action in ipairs(self) do
             _run(action)
+            -- action 执行过程中可能会被终止
+            -- 每一个 action 执行完, 都需要检查退出信号
             if self.exit then return nil end
         end
             
@@ -239,13 +241,14 @@ if not macros then
     macros = {}
 end
 
---[[
-命名 action 中
-loop 必须设置持续时间(duration)并且小于 60 秒,
-sequence 的 loop 属性不能为 true.
-]]
+-- 设置对象原型
 function macros:init()
     local function _init_string_macro(macro)
+        --[[
+        命名 action 中
+        loop 必须设置持续时间(duration)并且小于 60 秒,
+        sequence 的 loop 属性不能为 true.
+        ]]
         if macro.type == "loop"
                 and (macro.duration == nil
                     or macro.duration > 60000) then
@@ -269,7 +272,6 @@ function macros:init()
             end
         end
 
-        macro.enabled = false
         if type(macro.trigger) == "string" then
             _init_string_macro(macro)
         end
