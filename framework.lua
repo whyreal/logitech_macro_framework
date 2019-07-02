@@ -6,17 +6,6 @@ function init_list_metatable(o_list, proto)
     end
 end
 
-function delay(co_context, duration)
-    local resume_time = GetRunningTime() + duration
-    while true do
-        if GetRunningTime() >= resume_time then break end
-        if coroutine.yield() == "EXIT" then
-            co_context.exit = true
-            break
-        end
-    end
-end
-
 polling = {
     FAMILY   = "mouse",
     -- 轮训周期, 25 毫秒为 1.5 帧, 比较合理
@@ -41,22 +30,23 @@ end
 base_action = {
 }
 -- 根据 action 设置, 触发键盘或鼠标动作
-function base_action:release_skill(co_context)
+function base_action:release_skill()
+    OutputLogMessage(self.key .. "\n")
     if self.modifier ~= nil then
         PressKey(self.modifier)
     end
 
     if self.key == "left" then
         PressMouseButton(1)
-        if self.duration ~= nil then delay(co_context, self.duration) end
+        if self.duration ~= nil then self.context:delay(self.duration) end
         ReleaseMouseButton(1)
     elseif self.key == "right" then
         PressMouseButton(3)
-        if self.duration ~= nil then delay(co_context, self.duration) end
+        if self.duration ~= nil then self.context:delay(self.duration) end
         ReleaseMouseButton(3)
     else
         PressKey(self.key)
-        if self.duration ~= nil then delay(co_context, self.duration) end
+        if self.duration ~= nil then self.context:delay(self.duration) end
         ReleaseKey(self.key)
     end
 
@@ -65,22 +55,82 @@ function base_action:release_skill(co_context)
     end
 end
 
+function base_action:check_interval()
+    if self.type == "skill" then
+        if self.interval == nil then
+            self:release_skill()
+        elseif self.context.running_time >= self.release_time then
+            self:release_skill()
+            self.release_time = self.release_time + self.interval
+        end
+    elseif self.type == "macro" then
+        if self.interval == nil then
+            macros:toggle(self.value)
+        elseif self.context.running_time >= self.release_time then
+            macros:toggle(self.value)
+            self.release_time = self.release_time + self.interval
+        end
+        self.context.subtrigger[self.value] = true
+    end
+end
+
+function base_action:run()
+    if (self.once and not self.context.is_first_time) then
+        return nil
+    end
+
+    if self.type == "delay" then
+        self.context:delay(self.duration)
+
+    elseif self.type == "macro" then
+        macros:toggle(self.value)
+        self.context.subtrigger[self.value] = true
+
+    elseif self.type == "skill" then
+        self:release_skill()
+    end
+end
+
 base_macro = {
     enabled = false
 }
 
+function base_macro:delay(duration)
+    local resume_time = GetRunningTime() + duration
+    while true do
+        if GetRunningTime() >= resume_time then break end
+        if self:will_exit() then break end
+    end
+end
+
 function base_macro:active()
+    self.start_time = GetRunningTime()
+    self.running_time = 0
     self.subtrigger = {}
+    self.is_first_time = true
+
     -- 协程中, 无法直接终止执行,  exit 用来标识协程是否退出
     -- 将 macro 作为上下文, 通过函数参数传递
     self.exit = false
+    -- init skill
+    for _, action in ipairs(self) do
+        if action.interval ~= nil then
+            action.release_time = 0 
+        end
+    end
 
     if self.type == "loop" then
         self.co = coroutine.create(self.excute_loop)
-        coroutine.resume(self.co, self)
+        status, value = coroutine.resume(self.co, self)
+        if not status then
+            OutputLogMessage(value)
+        end
     elseif self.type == "sequence" then
         self.co = coroutine.create(self.excute_sequence)
-        coroutine.resume(self.co, self)
+        status, value = coroutine.resume(self.co, self)
+        if not status then
+            OutputLogMessage(value)
+        end
     end
 end
 
@@ -94,108 +144,74 @@ function base_macro:deactive()
     end
 
     if coroutine.status(self.co) ~= "dead" then
-        coroutine.resume(self.co, "EXIT")
+        status, value = coroutine.resume(self.co, "EXIT")
+        if not status then
+            OutputLogMessage(value)
+        end
     end
     self.co = nil
 end
 
-function base_macro:excute_loop()
-    self.start_time = GetRunningTime()
-    local loop_running_time = 0
+function base_macro:need_processing()
+    self.running_time = GetRunningTime() - self.start_time
 
-    local function _check()
-        for _, action in ipairs(self) do
-            if action.type == "skill" then
-                if action.interval == nil then
-                    action:release_skill(self)
-                elseif loop_running_time >= action.release_time then
-                    action:release_skill(self)
-                    action.release_time = action.release_time + action.interval
-                end
-            elseif action.type == "macro" then
-                if action.interval == nil then
-                    self:toggle(action.value)
-                elseif loop_running_time >= action.release_time then
-                    self:toggle(action.value)
-                    action.release_time = action.release_time + action.interval
-                end
-                self.subtrigger[action.value] = true
-            end
-        end
+    if not self.duration then
+        return true
     end
 
-    -- init skill
-    for _, action in ipairs(self) do
-        if action.interval ~= nil then
-            action.release_time = 0 
-        end
-    end
-
-    if self.before ~= nil then
-        self.before:excute_sequence()
-    end
-
-    while true do
-        if self.exit then
-            break
-        end
-
-        loop_running_time = GetRunningTime() - self.start_time
-        if self.duration then
-            if loop_running_time > self.duration then
-                -- 超时
-                break
-            else
-                _check()
-            end
-        else
-            _check()
-        end
-
-        if coroutine.yield() == "EXIT" then
-            self.exit = true
-        end
-    end
-
-    if self.after ~= nil then
-        self.after:excute_sequence()
+    if self.running_time > self.duration then
+        -- 超时
+        return false
+    else
+        return true
     end
 end
 
-function base_macro:excute_sequence()
-    local is_first_time = true
-
-    local function _run(action)
-        if (action.once and not is_first_time) then
-            return nil
-        end
-
-        if action.type == "delay" then
-            delay(self, action.duration)
-
-        elseif action.type == "macro" then
-            macros:toggle(action.value)
-            self.subtrigger[action.value] = true
-
-        elseif action.type == "skill" then
-            action:release_skill(self)
+function base_macro:excute_loop()
+    if self.before ~= nil then
+        for _,action in ipairs(self.before) do
+            action:run()
         end
     end
 
+    while true do
+        if self:need_processing() then
+            for _, action in ipairs(self) do
+                action:check_interval(self)
+            end
+        end
+
+        self.is_first_time = false
+        self:will_exit()
+        if self.exit then return nil end
+    end
+
+    if self.after ~= nil then
+        for _,action in ipairs(self.after) do
+            action:run()
+        end
+    end
+end
+
+function base_macro:will_exit() 
+    if coroutine.yield() == "EXIT" then
+        self.exit = true
+        return true
+    end
+    return false
+end
+
+function base_macro:excute_sequence()
     repeat
         for _, action in ipairs(self) do
-            _run(action)
+            action:run()
             -- action 执行过程中可能会被终止
             -- 每一个 action 执行完, 都需要检查退出信号
+            self:will_exit()
             if self.exit then return nil end
         end
             
-        is_first_time = false
-
-        -- 每次循环后, 保留一个退出窗口
-        if coroutine.yield() == "EXIT" then
-            self.exit = true
-        end
+        self.is_first_time = false
     until not self.loop
 end
 
@@ -232,8 +248,42 @@ function base_macro:run()
         if coroutine.status(self.co) == "dead" then
             self:deactive()
         elseif coroutine.status(self.co) == "suspended" then
-            coroutine.resume(self.co)
+            status, value = coroutine.resume(self.co)
+            if not status then
+                OutputLogMessage(value)
+            end
         end
+    end
+end
+
+function base_macro:check_string_macro()
+    --[[
+    命名 action 中
+    loop 必须设置持续时间(duration)并且小于 60 秒,
+    sequence 的 loop 属性不能为 true.
+    ]]
+    if self.type == "loop"
+            and (self.duration == nil
+            or self.duration > 60000) then
+        self.duration = 0
+    end
+    if self.type == "sequence" then
+        self.loop = false
+    end
+end
+
+function base_macro:init()
+    for _, s in ipairs({self, self.before, self.after}) do
+        if s ~= nil then
+            init_list_metatable(s, base_action)
+            for _, action in ipairs(s) do
+                action.context = self
+            end
+        end
+    end
+
+    if type(self.trigger) == "string" then
+        self:check_string_macro()
     end
 end
 
@@ -243,38 +293,9 @@ end
 
 -- 设置对象原型
 function macros:init()
-    local function _init_string_macro(macro)
-        --[[
-        命名 action 中
-        loop 必须设置持续时间(duration)并且小于 60 秒,
-        sequence 的 loop 属性不能为 true.
-        ]]
-        if macro.type == "loop"
-                and (macro.duration == nil
-                    or macro.duration > 60000) then
-            macro.duration = 0
-        end
-        if macro.type == "sequence" then
-            macro.loop = false
-        end
-    end
-
-    init_list_metatable(self, base_macro)
-
     for _, macro in ipairs(self) do
-        init_list_metatable(macro, base_action)
-        -- make macro.before and macro.before as a sequence macro
-        for _, s in ipairs({macro.before, macro.after}) do
-            if s ~= nil then
-                s.type = "sequence"
-                init_list_metatable({s}, base_macro)
-                init_list_metatable(s, base_action)
-            end
-        end
-
-        if type(macro.trigger) == "string" then
-            _init_string_macro(macro)
-        end
+        setmetatable(macro, {__index = base_macro})
+        macro:init()
     end
 end
 
