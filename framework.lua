@@ -31,7 +31,6 @@ base_action = {
 }
 -- 根据 action 设置, 触发键盘或鼠标动作
 function base_action:release_skill()
-    OutputLogMessage(self.key .. "\n")
     if self.modifier ~= nil then
         PressKey(self.modifier)
     end
@@ -55,7 +54,7 @@ function base_action:release_skill()
     end
 end
 
-function base_action:check_interval()
+function base_action:run_by_interval()
     if self.type == "skill" then
         if self.interval == nil then
             self:release_skill()
@@ -99,7 +98,8 @@ function base_macro:delay(duration)
     local resume_time = GetRunningTime() + duration
     while true do
         if GetRunningTime() >= resume_time then break end
-        if self:will_exit() then break end
+        self:will_exit()
+        if self.exit then return nil end
     end
 end
 
@@ -177,8 +177,10 @@ function base_macro:excute_loop()
     while true do
         if self:need_processing() then
             for _, action in ipairs(self) do
-                action:check_interval(self)
+                action:run_by_interval()
             end
+        else
+            break
         end
 
         self.is_first_time = false
@@ -196,9 +198,7 @@ end
 function base_macro:will_exit() 
     if coroutine.yield() == "EXIT" then
         self.exit = true
-        return true
     end
-    return false
 end
 
 function base_macro:excute_sequence()
@@ -244,14 +244,16 @@ function base_macro:run()
         return nil
     end
 
-    if self.co ~= nil then
-        if coroutine.status(self.co) == "dead" then
-            self:deactive()
-        elseif coroutine.status(self.co) == "suspended" then
-            status, value = coroutine.resume(self.co)
-            if not status then
-                OutputLogMessage(value)
-            end
+    if self.co == nil then
+        return nil
+    end
+
+    if coroutine.status(self.co) == "dead" then
+        self:deactive()
+    elseif coroutine.status(self.co) == "suspended" then
+        status, value = coroutine.resume(self.co)
+        if not status then
+            OutputLogMessage(value)
         end
     end
 end
@@ -259,8 +261,8 @@ end
 function base_macro:check_string_macro()
     --[[
     命名 action 中
-    loop 必须设置持续时间(duration)并且小于 60 秒,
-    sequence 的 loop 属性不能为 true.
+    - loop 必须设置持续时间(duration)并且小于 60 秒,
+    - sequence 的 loop 属性不能为 true.
     ]]
     if self.type == "loop"
             and (self.duration == nil
@@ -273,6 +275,7 @@ function base_macro:check_string_macro()
 end
 
 function base_macro:init()
+    -- init metatable and context
     for _, s in ipairs({self, self.before, self.after}) do
         if s ~= nil then
             init_list_metatable(s, base_action)
