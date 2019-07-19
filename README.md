@@ -20,45 +20,45 @@
 
 - 周期宏 loop
 
-	用来执行周期性指令, 通常是 buff 类技能
+    用来执行周期性指令, 通常是 buff 类技能
 
 - 序列宏 sequence
 
-	用来执行有前后顺序的一系列指令
+    用来执行有前后顺序的一系列指令
 
 从触发方式, 也可以将宏分为两类:
 
 - 数字宏
 
-	由鼠标按键触发
+    由鼠标按键触发
 
-	数字宏, 具有排他性, 当激活一个数字宏, 其他的数字宏将被自动关闭.
+    数字宏, 具有排他性, 当激活一个数字宏, 其他的数字宏将被自动关闭.
 
 - 命名宏
 
-	由宏触发, 本框架中, 宏是可以嵌套的
+    由宏触发, 本框架中, 宏是可以嵌套的
 
 ## 简介
 
-	keymap = {
-		left = "left";
-		ji_neng1 = "1"
-	}
+    keymap = {
+        left = "left";
+        ji_neng1 = "1"
+    }
 
-	macros = {
-		{ 
-			trigger  = 4,
-			type = "loop",
+    macros = {
+        { 
+            trigger  = 4,
+            type = "loop",
 
-			{ type = "skill", key = keymap.left };
-		},
-		{ 
-			trigger  = 7,
-			type = "sequence"
+            { type = "skill", key = keymap.left };
+        },
+        { 
+            trigger  = 7,
+            type = "sequence"
 
-			{ type = "skill", key = keymap.ji_neng1 };
-		},
-	}
+            { type = "skill", key = keymap.ji_neng1 };
+        },
+    }
 
 上述宏定义中, macros 中定义了两个宏:
 
@@ -92,46 +92,46 @@
  action 即 动作, 宏中包含的每一条指令即为一个 action. 本框架中, 提供了 3 种 action:
 
 ### skill
- 	
+     
 用于技能释放
 
 格式:
 
-	{ type = "skill", key = "1", interval = 1000, modifier = "lsfift", duration = 1000, once = true};
+    { type = "skill", key = "1", interval = 1000, modifier = "lsfift", duration = 1000, once = true};
 
 - type
 
-	设定 action 类型
+    设定 action 类型
 
-	必选
+    必选
 
 - key
 
-	设定技能对应的按键, 例如: "a", "b", "1", "2" 等等, 鼠标左键为"left", 右键为"right"
+    设定技能对应的按键, 例如: "a", "b", "1", "2" 等等, 鼠标左键为"left", 右键为"right"
 
-	必选
+    必选
 
 - interval
 
-	设定技能释放间隔时间, 单位为毫秒, 1000 即为 1 秒
+    设定技能释放间隔时间, 单位为毫秒, 1000 即为 1 秒
 
-	可选
+    可选
 
 - duration
 
-	设定技能持续时间, 单位为毫秒, 适用于引导类技能
+    设定技能持续时间, 单位为毫秒, 适用于引导类技能
 
-	可选
+    可选
 
 - modifier
 
-	设定修饰按键, 例如: "lshift" -- 左边的shift
+    设定修饰按键, 例如: "lshift" -- 左边的shift
 
-	可选
+    可选
 
 - once
 
-	设定该技能是否只在 sequence 第一次执行触发, true 或者 false
+    设定该技能是否只在 sequence 第一次执行触发, true 或者 false
 
 ### delay
 
@@ -139,19 +139,19 @@
 
 格式:
 
-	{ type = "delay", duration = "1000" };
+    { type = "delay", duration = "1000" };
 
 - type
 
-	设定 action 类型
+    设定 action 类型
 
-	必选
+    必选
 
 - duration
 
-	设定等待持续时间, 单位为毫秒, 适用于引导类技能
+    设定等待持续时间, 单位为毫秒, 适用于引导类技能
 
-	必选
+    必选
 
 ### macro
 
@@ -159,47 +159,47 @@
 
 格式:
 
-	{ type = "macro", value = "yun_shi" };
+    { type = "macro", value = "yun_shi" };
 
 - type
 
-	设定 action 类型
+    设定 action 类型
 
-	必选
+    必选
 
 - value
 
-	设定被触发的宏名称
+    设定被触发的宏名称
 
-	必选
+    必选
 
 ## 周期宏 loop 定义
 
-	keymap = {   -- 定义按键
-		 name = "1"   
-	}
+    keymap = {   -- 定义按键
+         name = "1"   
+    }
 
-	macros = {
-		{ 
-			trigger  = 4,
-			type = "loop",
-			duration = 20000,
+    macros = {
+        { 
+            trigger  = 4,
+            type = "loop",
+            duration = 20000,
 
-			before = {
-				action;
-				action;
-				...
-			};
-			action;
-			action;
-			...
-			after = {
-				action;
-				action;
-				...
-			};
-		}
-	}
+            before = {
+                action;
+                action;
+                ...
+            };
+            action;
+            action;
+            ...
+            after = {
+                action;
+                action;
+                ...
+            };
+        }
+    }
 
 loop 宏, 可以定义持续时间 duration, 超过 duration, 宏会自动关闭.
 
@@ -207,49 +207,49 @@ loop 宏, 可以定义持续时间 duration, 超过 duration, 宏会自动关闭
 
 假设一个法师, 想要在变身黑人后, 持续点击左键, 同时每 2 秒释放技能 1, 而且在变身结束后释放黑洞, 可以编写如下宏:
 
-	keymap = {
-		left = "left";          -- 定义左键
-		hei_dong = "1";         -- 定义黑洞按键
-		bin_bao_shu = "1";      -- 定义冰爆术按键
-		hei_ren = "4";          -- 定义黑人按键
-	}
+    keymap = {
+        left = "left";          -- 定义左键
+        hei_dong = "1";         -- 定义黑洞按键
+        bin_bao_shu = "1";      -- 定义冰爆术按键
+        hei_ren = "4";          -- 定义黑人按键
+    }
 
-	macros = {
-		{ 
-			trigger  = 4,      -- 使用 G4 触发该宏
-			type = "loop",
+    macros = {
+        { 
+            trigger  = 4,      -- 使用 G4 触发该宏
+            type = "loop",
 
-			duration = 20000, -- 持续 20 秒
+            duration = 20000, -- 持续 20 秒
 
-			before = {   -- 技能循环开始前执行
-				{ type = "skill", key = keymap.hei_ren};  -- 变身
-			},
+            before = {   -- 技能循环开始前执行
+                { type = "skill", key = keymap.hei_ren};  -- 变身
+            },
 
-			{ type = "skill", key = keymap.left};  -- 持续点击左键
-			{ type = "skill", key = keymap.bin_bao_shu, interval = 2000};  -- 每两秒释放冰爆术
+            { type = "skill", key = keymap.left};  -- 持续点击左键
+            { type = "skill", key = keymap.bin_bao_shu, interval = 2000};  -- 每两秒释放冰爆术
 
-			before = {   -- 技能循环结束后, 或 宏被关闭时 执行
-				{ type = "skill", key = keymap. hei_dong};  -- 释放黑洞
-			},
-		},
-	}
+            before = {   -- 技能循环结束后, 或 宏被关闭时 执行
+                { type = "skill", key = keymap. hei_dong};  -- 释放黑洞
+            },
+        },
+    }
 
 ## 序列宏 sequence 定义
 
-	keymap = {
-		name = "1";
-	}
+    keymap = {
+        name = "1";
+    }
 
-	macros = {
-		{ 
-			trigger  = 4,
-			type = "sequence",
-			loop = true; 是否重复执行
+    macros = {
+        { 
+            trigger  = 4,
+            type = "sequence",
+            loop = true; 是否重复执行
 
-			action;
-			action;
-			...
-	}
+            action;
+            action;
+            ...
+    }
 
 sequence 宏, 可以通过设置 loop 属性设置是否重复执行. 如果不设置 loop 则 sequence 只执行一次, 执行完成后, 宏会自动关闭.
 
@@ -261,46 +261,46 @@ sequence 宏, 可以通过设置 loop 属性设置是否重复执行. 如果不�
 
 可以编写以下宏:
 
-	keymap = {
-		yun_shi = "1";  -- 定义陨石按键
-		hei_ren = "2";  -- 定义黑人按键
-		hui_neng = "left";  -- 定义左键
-		yin_dao = "right";  -- 定义引导技能按键
-	}
+    keymap = {
+        yun_shi = "1";  -- 定义陨石按键
+        hei_ren = "2";  -- 定义黑人按键
+        hui_neng = "left";  -- 定义左键
+        yin_dao = "right";  -- 定义引导技能按键
+    }
 
-	macros = {
-		{ 
-			trigger  = 4,  -- G4 触发
-			type = "sequence",
+    macros = {
+        { 
+            trigger  = 4,  -- G4 触发
+            type = "sequence",
 
-			-- 陨石
-			{ type = "skill", key = keymap.yun_shi};
+            -- 陨石
+            { type = "skill", key = keymap.yun_shi};
 
-			-- 延时 350 毫秒
-			{ type = "delay", duration = "350" };
+            -- 延时 350 毫秒
+            { type = "delay", duration = "350" };
 
-			-- 强制站立 点击左键 持续 500 毫秒
-			{ type = "skill", key = keymap.hui_neng, duration = 500, modifier = "lshift"};
+            -- 强制站立 点击左键 持续 500 毫秒
+            { type = "skill", key = keymap.hui_neng, duration = 500, modifier = "lshift"};
 
-			-- 延时 350 毫秒
-			{ type = "delay", duration = "350" };
+            -- 延时 350 毫秒
+            { type = "delay", duration = "350" };
 
-			-- 引导技能
-			{ type = "skill", key = keymap.ying_dao, duration = 50};
-		}
-	}
+            -- 引导技能
+            { type = "skill", key = keymap.ying_dao, duration = 50};
+        }
+    }
 
 ## macros 定义
 
-	keymap = {
-		-- 按键定义
-	}
+    keymap = {
+        -- 按键定义
+    }
 
-	macros = {
-		{ 宏 1 };
-		{ 宏 2 };
-		...
-	}
+    macros = {
+        { 宏 1 };
+        { 宏 2 };
+        ...
+    }
 
 keymap 中可以给按键定义一个名字, 方便后续宏的编写, 当然也可以不定义 keymap, 在 action 的 key 属性中直接配置按键.
 
@@ -318,199 +318,199 @@ macros 中包含了我们定义的所有宏, 可以有多个.
 
 ### 奶僧
 
-	keymap = {
-		left = "left";
-		jufengpo = "right";
-		chanding = "1";
-		linguangwu = "2";
-		jinlunzhen = "3";
-		zhenyan = "4";
-	}
+    keymap = {
+        left = "left";
+        jufengpo = "right";
+        chanding = "1";
+        linguangwu = "2";
+        jinlunzhen = "3";
+        zhenyan = "4";
+    }
 
-	macros = {
-		-- 赶路
-		{ 
-			trigger  = 7,
-			type = "loop",
+    macros = {
+        -- 赶路
+        { 
+            trigger  = 7,
+            type = "loop",
 
-			{ type = "skill", key = keymap.zhenyan,   interval = 2900 };
-			{ type = "skill", key = keymap.linguangwu, interval = 1000 };
-			{ type = "skill", key = keymap.left };
-		},
-		-- 站桩
-		{ 
-			trigger  = 4,
-			type = "loop",
+            { type = "skill", key = keymap.zhenyan,   interval = 2900 };
+            { type = "skill", key = keymap.linguangwu, interval = 1000 };
+            { type = "skill", key = keymap.left };
+        },
+        -- 站桩
+        { 
+            trigger  = 4,
+            type = "loop",
 
-			{ type = "skill", key = keymap.jufengpo, interval = 1000};
-			{ type = "skill", key = keymap.left};
-			{ type = "skill", key = keymap.chanding,   interval = 1000 };
-			{ type = "skill", key = keymap.linguangwu, interval = 1000 };
-			{ type = "skill", key = keymap.jinlunzhen, interval =  5900 };
-			{ type = "skill", key = keymap.zhenyan,   interval = 500 };
-		}
-	}
+            { type = "skill", key = keymap.jufengpo, interval = 1000};
+            { type = "skill", key = keymap.left};
+            { type = "skill", key = keymap.chanding,   interval = 1000 };
+            { type = "skill", key = keymap.linguangwu, interval = 1000 };
+            { type = "skill", key = keymap.jinlunzhen, interval =  5900 };
+            { type = "skill", key = keymap.zhenyan,   interval = 500 };
+        }
+    }
 
 ### 奥陨
 
-	keymap = {
-		yunshi = "1";
-		heiren = "2";
-		huineng = "left";
-		yindao = "right";
-	}
+    keymap = {
+        yunshi = "1";
+        heiren = "2";
+        huineng = "left";
+        yindao = "right";
+    }
 
-	macros = {
-		{ 
-			trigger  = 4,
-			type = "sequence"
-			loop = true;
+    macros = {
+        { 
+            trigger  = 4,
+            type = "sequence"
+            loop = true;
 
-			-- 变黑人
-			{ type = "skill", key = keymap.heiren};
-			{ type = "delay", duration = "20000" };
+            -- 变黑人
+            { type = "skill", key = keymap.heiren};
+            { type = "delay", duration = "20000" };
 
-			-- 第一次 由于没有勾玉 增加 7 秒延迟
-			{ type = "delay", duration = "7000", once=true };
+            -- 第一次 由于没有勾玉 增加 7 秒延迟
+            { type = "delay", duration = "7000", once=true };
 
-			-- 正常延迟
-			{ type = "delay", duration = "4250" };
+            -- 正常延迟
+            { type = "delay", duration = "4250" };
 
-			-- 第一发
-			{ type = "skill", key = keymap.yunshi};
-			{ type = "delay", duration = "350" };
+            -- 第一发
+            { type = "skill", key = keymap.yunshi};
+            { type = "delay", duration = "350" };
 
-			-- 回能
-			{ type = "skill", key = keymap.huineng, duration = 500, modifier = "lshift"};
+            -- 回能
+            { type = "skill", key = keymap.huineng, duration = 500, modifier = "lshift"};
 
-			{ type = "delay", duration = "350" };
+            { type = "delay", duration = "350" };
 
-			-- 引导技能
-			{ type = "skill", key = keymap.yindao, duration = 350};
+            -- 引导技能
+            { type = "skill", key = keymap.yindao, duration = 350};
 
-			{ type = "delay", duration = "5000" };
+            { type = "delay", duration = "5000" };
 
-			-- 第二发
-			{ type = "skill", key = keymap.yunshi};
-			{ type = "delay", duration = "350" };
+            -- 第二发
+            { type = "skill", key = keymap.yunshi};
+            { type = "delay", duration = "350" };
 
-			-- 回能
-			{ type = "skill", key = keymap.huineng, duration = 450, modifier = "lshift"};
+            -- 回能
+            { type = "skill", key = keymap.huineng, duration = 450, modifier = "lshift"};
 
-			{ type = "delay", duration = "350" };
+            { type = "delay", duration = "350" };
 
-			-- 引导技能
-			{ type = "skill", key = keymap.yindao, duration = 50};
-		}
-	}
+            -- 引导技能
+            { type = "skill", key = keymap.yindao, duration = 50};
+        }
+    }
 
 ### 奥陨 2
 
-	-- 火 1s 后开宏
-	keymap = {
-		yun_shi = "1";
-		bin_bao_shu = "1";
-		shi_jian_yan_chi = "2";
-		hei_ren = "2";
-		zeng_shang = "3";
-		hu_jia = "4";
-		hui_neng = "left";
-		ying_dao = "right";
-	}
+    -- 火 1s 后开宏
+    keymap = {
+        yun_shi = "1";
+        bin_bao_shu = "1";
+        shi_jian_yan_chi = "2";
+        hei_ren = "2";
+        zeng_shang = "3";
+        hu_jia = "4";
+        hui_neng = "left";
+        ying_dao = "right";
+    }
 
-	macros = {
-		{ 
-			trigger  = 4,
-			type = "sequence",
-			loop = true;
+    macros = {
+        { 
+            trigger  = 4,
+            type = "sequence",
+            loop = true;
 
-			-- 冰 开宏
-			{ type = "skill", key = keymap.ying_dao, duration = 4250 };
-			{ type = "delay", duration = 1000 };
+            -- 冰 开宏
+            { type = "skill", key = keymap.ying_dao, duration = 4250 };
+            { type = "delay", duration = 1000 };
 
-			-- 第一发
-			{ type = "macro", value = "yun_shi" };
-			{ type = "delay", duration = 1500 };
+            -- 第一发
+            { type = "macro", value = "yun_shi" };
+            { type = "delay", duration = 1500 };
 
-			{ type = "skill", key = keymap.hui_neng, duration = 1000 };
-			{ type = "skill", key = keymap.ying_dao, duration = 1000 };
-			{ type = "skill", key = keymap.hui_neng, duration = 1000 };
-			{ type = "delay", duration = 750 };
-			{ type = "skill", key = keymap.zeng_shang};
-			{ type = "delay", duration = "1000" };
+            { type = "skill", key = keymap.hui_neng, duration = 1000 };
+            { type = "skill", key = keymap.ying_dao, duration = 1000 };
+            { type = "skill", key = keymap.hui_neng, duration = 1000 };
+            { type = "delay", duration = 750 };
+            { type = "skill", key = keymap.zeng_shang};
+            { type = "delay", duration = "1000" };
 
-			-- 第二发
-			{ type = "macro", value = "yun_shi" };
-			{ type = "delay", duration = 1500 };
+            -- 第二发
+            { type = "macro", value = "yun_shi" };
+            { type = "delay", duration = 1500 };
 
-			-- 黑人
-			{ type = "macro", value = "hei_ren" };
-			{ type = "delay", duration = 20000 };
-		},
-		{
-			trigger = "hei_ren",
-			type = "loop",
-			duration = 20000;
-			before = {
-				{ type = "skill", key = keymap.hei_ren};
-				{ type = "skill", key = keymap.shi_jian_yan_chi};
-			},
-			{ type = "skill", key = keymap.bin_bao_shu };
-		},
-		{
-			-- 落地总时间 75 帧, 1250 毫秒, 为了保险, 增加 250 毫秒, 共计 1500  毫秒
-			trigger = "yun_shi",
-			type = "sequence",
-			-- 陨石
-			{ type = "skill", key = keymap.yun_shi};
-			-- 回能
-			{ type = "skill", key = keymap.hui_neng, duration = 1000, modifier = "lshift"};
-			-- 引导技能
-			{ type = "skill", key = keymap.ying_dao, duration = 500};
-		}
-	}
+            -- 黑人
+            { type = "macro", value = "hei_ren" };
+            { type = "delay", duration = 20000 };
+        },
+        {
+            trigger = "hei_ren",
+            type = "loop",
+            duration = 20000;
+            before = {
+                { type = "skill", key = keymap.hei_ren};
+                { type = "skill", key = keymap.shi_jian_yan_chi};
+            },
+            { type = "skill", key = keymap.bin_bao_shu };
+        },
+        {
+            -- 落地总时间 75 帧, 1250 毫秒, 为了保险, 增加 250 毫秒, 共计 1500  毫秒
+            trigger = "yun_shi",
+            type = "sequence",
+            -- 陨石
+            { type = "skill", key = keymap.yun_shi};
+            -- 回能
+            { type = "skill", key = keymap.hui_neng, duration = 1000, modifier = "lshift"};
+            -- 引导技能
+            { type = "skill", key = keymap.ying_dao, duration = 500};
+        }
+    }
 
 
 ### 棒棒糖 1
 
-	keymap = {
-		left = "left";
-		ying_dao = "right";
-		hei_dong = "1";
-		bin_bao_shu = "1";
-		shi_jian_yan_chi = "2";
-		hu_dun = "2";
-		kuang_bao = "3";
-		hei_ren = "4";
-	}
+    keymap = {
+        left = "left";
+        ying_dao = "right";
+        hei_dong = "1";
+        bin_bao_shu = "1";
+        shi_jian_yan_chi = "2";
+        hu_dun = "2";
+        kuang_bao = "3";
+        hei_ren = "4";
+    }
 
-	macros = {
-		{ 
-			trigger  = 7,
-			type = "sequence",
+    macros = {
+        { 
+            trigger  = 7,
+            type = "sequence",
 
-			{ type = "skill", key = keymap.left, modifier = "lshift"};
-			{ type = "skill", key = keymap.hu_dun };
-			{ type = "macro", value = "hei_ren" };
-			{ type = "delay", duration = 20000 };
+            { type = "skill", key = keymap.left, modifier = "lshift"};
+            { type = "skill", key = keymap.hu_dun };
+            { type = "macro", value = "hei_ren" };
+            { type = "delay", duration = 20000 };
 
-			{ type = "delay", duration = 1000 };
-			{ type = "skill", key = keymap.hei_dong};
-		},
-		{
-			trigger = "hei_ren",
-			type = "loop",
-			duration = 20000,
+            { type = "delay", duration = 1000 };
+            { type = "skill", key = keymap.hei_dong};
+        },
+        {
+            trigger = "hei_ren",
+            type = "loop",
+            duration = 20000,
 
-			before = {
-				{ type = "skill", key = keymap.hei_ren};
-				{ type = "delay", duration = 700 };
-				{ type = "skill", key = keymap.shi_jian_yan_chi};
-			},
+            before = {
+                { type = "skill", key = keymap.hei_ren};
+                { type = "delay", duration = 700 };
+                { type = "skill", key = keymap.shi_jian_yan_chi};
+            },
 
-			{ type = "skill", key = keymap.bin_bao_shu };
-		}
-	}
+            { type = "skill", key = keymap.bin_bao_shu };
+        }
+    }
 
 # 注意事项
 

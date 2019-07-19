@@ -110,7 +110,6 @@ function base_macro:active()
     self.is_first_time = true
 
     -- 协程中, 无法直接终止执行,  exit 用来标识协程是否退出
-    -- 将 macro 作为上下文, 通过函数参数传递
     self.exit = false
     -- init skill
     for _, action in ipairs(self) do
@@ -217,7 +216,10 @@ end
 
 function base_macro:toggle(trigger, status)
     if trigger ~= self.trigger then
-        if (type(trigger) == "number" and type(self.trigger) == "number" and self.enabled) then
+        if (type(trigger) == "number"
+                and type(self.trigger) == "number"
+                and self.enabled) then
+
             -- 匿名(数字)宏由鼠标按键触发, 具有排他性, 同一时间只能激活一个
             -- 当激活一个数字宏, 其他的数字宏将被自动关闭
             self.enabled = false
@@ -240,13 +242,9 @@ function base_macro:toggle(trigger, status)
 end
 
 function base_macro:run()
-    if not self.enabled then
-        return nil
-    end
+    if not self.enabled then return nil end
 
-    if self.co == nil then
-        return nil
-    end
+    if self.co == nil then return nil end
 
     if coroutine.status(self.co) == "dead" then
         self:deactive()
@@ -269,17 +267,19 @@ function base_macro:check_string_macro()
             or self.duration > 60000) then
         self.duration = 0
     end
+
     if self.type == "sequence" then
         self.loop = false
     end
 end
 
 function base_macro:init()
-    -- init metatable and context
+    -- init metatable and context of action
     for _, s in ipairs({self, self.before, self.after}) do
         if s ~= nil then
             init_list_metatable(s, base_action)
             for _, action in ipairs(s) do
+                -- 将 macro 作为上下文, 通过函数参数传递
                 action.context = self
             end
         end
