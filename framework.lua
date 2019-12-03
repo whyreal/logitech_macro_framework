@@ -1,15 +1,7 @@
-function init_list_metatable(o_list, proto)
-    if o_list == nil then return nil end
-
-    for _, o in ipairs(o_list) do
-        setmetatable(o, {__index = proto})
-    end
-end
-
-polling = {
+local polling = {
     FAMILY   = "mouse",
     -- 轮训周期, 25 毫秒为 1.5 帧, 比较合理
-    INTERVAL = 25
+    INTERVAL = 50
 }
 -- 轮询初始化
 function polling:init()
@@ -18,7 +10,7 @@ function polling:init()
 end
 
 -- 轮询
-function polling:poll(event, arg, family)
+function polling:poll(event, _, family)
     if family == self.FAMILY then
         if (event == "M_RELEASED") then
             Sleep(self.INTERVAL)
@@ -27,34 +19,65 @@ function polling:poll(event, arg, family)
     end
 end
 
-base_action = {
+local base_action = {
 }
--- 根据 action 设置, 触发键盘或鼠标动作
-function base_action:release_skill()
-    if self.modifier ~= nil then
-        PressKey(self.modifier)
-    end
 
-    if self.key == "left" then
-        PressMouseButton(1)
-        if self.duration ~= nil then self.context:delay(self.duration) end
-        ReleaseMouseButton(1)
-    elseif self.key == "right" then
+function base_action:press_key()
+    if self.modifier ~= nil then PressKey(self.modifier) end
+
+    if self.key == "right"  then
         PressMouseButton(3)
-        if self.duration ~= nil then self.context:delay(self.duration) end
-        ReleaseMouseButton(3)
+    elseif self.key == "left" then
+        PressMouseButton(1)
     else
         PressKey(self.key)
-        if self.duration ~= nil then self.context:delay(self.duration) end
+    end
+    self.key_status = "down"
+end
+
+function base_action:release_key()
+    if self.key == "right"  then
+        ReleaseMouseButton(3)
+    elseif self.key == "left" then
+        ReleaseMouseButton(1)
+    else
         ReleaseKey(self.key)
     end
+    self.key_status = "up"
 
-    if self.modifier ~= nil then
-        ReleaseKey(self.modifier)
+    if self.modifier ~= nil then PressKey(self.modifier) end
+end
+
+-- 根据 action 设置, 触发键盘或鼠标动作
+function base_action:release_skill()
+    if self.key_status == "up" then self:press_key() end
+
+    if self.duration ~= nil then
+        if self.context.type == "loop" and self:finished() then
+            self:release_key()
+        end
+        if self.context.type == "sequence" then
+            self.context:delay(self.duration)
+            self:release_key()
+        end
+    else
+        self:release_key()
     end
 end
 
-function base_action:run_by_interval()
+function base_action:finished()
+    if self.context.running_time >= self.duration then
+        return true
+    else
+        return false
+    end
+end
+
+function base_action:run()
+    if (self.once and not self.context.is_first_time) then
+        return nil
+    end
+
     if self.type == "skill" then
         if self.interval == nil then
             self:release_skill()
@@ -70,27 +93,12 @@ function base_action:run_by_interval()
             self.release_time = self.release_time + self.interval
         end
         self.context.subtrigger[self.value] = true
-    end
-end
-
-function base_action:run()
-    if (self.once and not self.context.is_first_time) then
-        return nil
-    end
-
-    if self.type == "delay" then
+    elseif self.type == "delay" then
         self.context:delay(self.duration)
-
-    elseif self.type == "macro" then
-        macros:toggle(self.value)
-        self.context.subtrigger[self.value] = true
-
-    elseif self.type == "skill" then
-        self:release_skill()
     end
 end
 
-base_macro = {
+local base_macro = {
     enabled = false
 }
 
@@ -104,6 +112,7 @@ function base_macro:delay(duration)
 end
 
 function base_macro:active()
+    -- macro 关闭时不会清理状态, 需要在 active 的时候重置必要的状态.
     self.start_time = GetRunningTime()
     self.running_time = 0
     self.subtrigger = {}
@@ -111,25 +120,23 @@ function base_macro:active()
 
     -- 协程中, 无法直接终止执行,  exit 用来标识协程是否退出
     self.exit = false
-    -- init skill
+
+    -- init action
     for _, action in ipairs(self) do
+        action.key_status = "up"
         if action.interval ~= nil then
-            action.release_time = 0 
+            action.release_time = 0
         end
     end
 
     if self.type == "loop" then
         self.co = coroutine.create(self.excute_loop)
-        status, value = coroutine.resume(self.co, self)
-        if not status then
-            OutputLogMessage(value)
-        end
     elseif self.type == "sequence" then
         self.co = coroutine.create(self.excute_sequence)
-        status, value = coroutine.resume(self.co, self)
-        if not status then
-            OutputLogMessage(value)
-        end
+    end
+    local status, value = coroutine.resume(self.co, self)
+    if not status then
+        OutputLogMessage(value)
     end
 end
 
@@ -142,8 +149,12 @@ function base_macro:deactive()
         macros:toggle(t, false)
     end
 
+    for _, action in ipairs(self) do
+        action:release_key()
+    end
+
     if coroutine.status(self.co) ~= "dead" then
-        status, value = coroutine.resume(self.co, "EXIT")
+        local status, value = coroutine.resume(self.co, "EXIT")
         if not status then
             OutputLogMessage(value)
         end
@@ -152,7 +163,6 @@ function base_macro:deactive()
 end
 
 function base_macro:need_processing()
-    self.running_time = GetRunningTime() - self.start_time
 
     if not self.duration then
         return true
@@ -176,13 +186,14 @@ function base_macro:excute_loop()
     while true do
         if self:need_processing() then
             for _, action in ipairs(self) do
-                action:run_by_interval()
+                action:run()
             end
         else
             break
         end
 
         self.is_first_time = false
+
         self:will_exit()
         if self.exit then return nil end
     end
@@ -194,7 +205,7 @@ function base_macro:excute_loop()
     end
 end
 
-function base_macro:will_exit() 
+function base_macro:will_exit()
     if coroutine.yield() == "EXIT" then
         self.exit = true
     end
@@ -209,29 +220,16 @@ function base_macro:excute_sequence()
             self:will_exit()
             if self.exit then return nil end
         end
-            
+
         self.is_first_time = false
     until not self.loop
 end
 
 function base_macro:toggle(trigger, status)
-    if trigger ~= self.trigger then
-        if (type(trigger) == "number"
-                and type(self.trigger) == "number"
-                and self.enabled) then
-
-            -- 匿名(数字)宏由鼠标按键触发, 具有排他性, 同一时间只能激活一个
-            -- 当激活一个数字宏, 其他的数字宏将被自动关闭
-            self.enabled = false
-        else
-            return nil
-        end
+    if status == nil then
+        self.enabled = not self.enabled
     else
-        if status == nil then
-            self.enabled = not self.enabled
-        else
-            self.enabled = status
-        end
+        self.enabled = status
     end
 
     if self.enabled then
@@ -246,53 +244,51 @@ function base_macro:run()
 
     if self.co == nil then return nil end
 
+    self.running_time = GetRunningTime() - self.start_time
+
     if coroutine.status(self.co) == "dead" then
         self:deactive()
     elseif coroutine.status(self.co) == "suspended" then
-        status, value = coroutine.resume(self.co)
+
+        local status, value = coroutine.resume(self.co)
         if not status then
             OutputLogMessage(value)
         end
     end
 end
 
-function base_macro:check_string_macro()
-    --[[
-    命名 action 中
-    - loop 必须设置持续时间(duration)并且小于 60 秒,
-    - sequence 的 loop 属性不能为 true.
-    ]]
-    if self.type == "loop"
-            and (self.duration == nil
-            or self.duration > 60000) then
-        self.duration = 0
-    end
+function base_macro:check_macro()
+    if type(self.trigger) == "string" then
+        --[[
+        命名 action 中
+        - loop 必须设置持续时间(duration)并且小于 60 秒,
+        - sequence 的 loop 属性不能为 true.
+        ]]
+        if self.type == "loop"
+            and (self.duration == nil or self.duration > 60000) then
+            self.duration = 0
+        end
 
-    if self.type == "sequence" then
-        self.loop = false
+        if self.type == "sequence" then
+            self.loop = false
+        end
     end
 end
 
 function base_macro:init()
     -- init metatable and context of action
     for _, s in ipairs({self, self.before, self.after}) do
-        if s ~= nil then
-            init_list_metatable(s, base_action)
-            for _, action in ipairs(s) do
-                -- 将 macro 作为上下文, 通过函数参数传递
-                action.context = self
-            end
+        for _, action in ipairs(s) do
+            -- 将 macro 作为上下文, 通过函数参数传递
+            action.context = self
+            setmetatable(action, {__index = base_action})
         end
     end
 
-    if type(self.trigger) == "string" then
-        self:check_string_macro()
-    end
+    self:check_macro()
 end
 
-if not macros then
-    macros = {}
-end
+--local macros = {}
 
 -- 设置对象原型
 function macros:init()
@@ -306,10 +302,21 @@ end
 -- 数字宏具有排他性
 function macros:toggle(trigger, status)
     for _, macro in ipairs(self) do
-        macro:toggle(trigger, status)
+        if trigger ~= macro.trigger then
+            if (type(trigger) == "number"
+                and type(macro.trigger) == "number"
+                and macro.enabled) then
+
+                -- 匿名(数字)宏由鼠标按键触发, 具有排他性, 同一时间只能激活一个
+                -- 当激活一个数字宏, 其他的数字宏将被自动关闭
+                macro:toggle(trigger, false)
+            end
+        else
+            macro:toggle(trigger, status)
+        end
     end
 end
- 
+
 -- 迭代 macros 中激活的宏, 进行相应处理
 function macros:run()
     if not DO_ITERATE then return nil end
@@ -325,15 +332,15 @@ function OnEvent(event, arg, family)
     if event == "PROFILE_ACTIVATED" then
         --  初始化
         ClearLog()
-        OutputLogMessage("Script started !\n")
         polling:init()
         macros:init()
+        OutputLogMessage("Script started !\n")
     end
 
     --  Profile 终止事件
-    if event == "PROFILE_DEACTIVATED" then
-    end
-    
+    -- if event == "PROFILE_DEACTIVATED" then
+    -- end
+
     -- 鼠标点击事件
     if(event == "MOUSE_BUTTON_PRESSED") then
         -- 事件处理期间, 暂停 macros 轮询
@@ -345,3 +352,4 @@ function OnEvent(event, arg, family)
     macros:run()
     polling:poll(event, arg, family)
 end
+--OutputLogMessage("event = %s, arg = %s\n", event, arg);

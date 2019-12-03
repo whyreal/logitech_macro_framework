@@ -1,6 +1,7 @@
 # 目标
 
 降低罗技鼠标宏开发难度.
+
 使用本框架, 不了解编程知识的人, 也可以方便的编写鼠标宏.
 
 # 使用方法
@@ -92,7 +93,7 @@
  action 即 动作, 宏中包含的每一条指令即为一个 action. 本框架中, 提供了 3 种 action:
 
 ### skill
-     
+
 用于技能释放
 
 格式:
@@ -149,7 +150,7 @@
 
 - duration
 
-    设定等待持续时间, 单位为毫秒, 适用于引导类技能
+    设定等待持续时间, 单位为毫秒
 
     必选
 
@@ -190,9 +191,11 @@
                 action;
                 ...
             };
+
             action;
             action;
             ...
+
             after = {
                 action;
                 action;
@@ -228,7 +231,7 @@ loop 宏, 可以定义持续时间 duration, 超过 duration, 宏会自动关闭
             { type = "skill", key = keymap.left};  -- 持续点击左键
             { type = "skill", key = keymap.bin_bao_shu, interval = 2000};  -- 每两秒释放冰爆术
 
-            before = {   -- 技能循环结束后, 或 宏被关闭时 执行
+            before = {   -- 技能循环结束后
                 { type = "skill", key = keymap. hei_dong};  -- 释放黑洞
             },
         },
@@ -249,6 +252,7 @@ loop 宏, 可以定义持续时间 duration, 超过 duration, 宏会自动关闭
             action;
             action;
             ...
+        }
     }
 
 sequence 宏, 可以通过设置 loop 属性设置是否重复执行. 如果不设置 loop 则 sequence 只执行一次, 执行完成后, 宏会自动关闭.
