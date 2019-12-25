@@ -19,8 +19,7 @@ function polling:poll(event, _, family)
     end
 end
 
-local base_action = {
-}
+local base_action = { }
 
 function base_action:press_key()
     if self.modifier ~= nil then PressKey(self.modifier) end
@@ -150,7 +149,9 @@ function base_macro:deactive()
     end
 
     for _, action in ipairs(self) do
-        action:release_key()
+        if action.key ~= nil then
+            action:release_key()
+        end
     end
 
     if coroutine.status(self.co) ~= "dead" then
@@ -162,17 +163,17 @@ function base_macro:deactive()
     self.co = nil
 end
 
-function base_macro:need_processing()
+function base_macro:timeout()
 
     if not self.duration then
-        return true
+        return false
     end
 
     if self.running_time > self.duration then
         -- 超时
-        return false
-    else
         return true
+    else
+        return false
     end
 end
 
@@ -184,7 +185,7 @@ function base_macro:excute_loop()
     end
 
     while true do
-        if self:need_processing() then
+        if not self:timeout() then
             for _, action in ipairs(self) do
                 action:run()
             end
@@ -257,7 +258,7 @@ function base_macro:run()
     end
 end
 
-function base_macro:check_macro()
+function base_macro:validate()
     if type(self.trigger) == "string" then
         --[[
         命名 action 中
@@ -285,7 +286,7 @@ function base_macro:init()
         end
     end
 
-    self:check_macro()
+    self:validate()
 end
 
 --local macros = {}
@@ -299,16 +300,15 @@ function macros:init()
 end
 
 -- 切换宏的状态
--- 数字宏具有排他性
 function macros:toggle(trigger, status)
     for _, macro in ipairs(self) do
         if trigger ~= macro.trigger then
+            -- 匿名(数字)宏由鼠标按键触发, 具有排他性, 同一时间只能激活一个
+            -- 当激活一个数字宏, 其他的数字宏将被自动关闭
             if (type(trigger) == "number"
                 and type(macro.trigger) == "number"
                 and macro.enabled) then
 
-                -- 匿名(数字)宏由鼠标按键触发, 具有排他性, 同一时间只能激活一个
-                -- 当激活一个数字宏, 其他的数字宏将被自动关闭
                 macro:toggle(trigger, false)
             end
         else
